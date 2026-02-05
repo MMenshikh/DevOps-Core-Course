@@ -109,3 +109,17 @@ The application is configured via environment variables:
 ``` bash
 HOST=127.0.0.1 PORT=8080 DEBUG=true python app.py
 ```
+
+## Docker
+
+### Build Image
+
+docker build -t maksimmenshikh/devops-info-service .
+
+### Run Container
+
+docker run -p 5000:5000 maksimmenshikh/devops-info-service
+
+### Pull from Docker Hub
+
+docker pull maksimmenshikh/devops-info-service
