@@ -123,3 +123,11 @@ docker run -p 5000:5000 maksimmenshikh/devops-info-service
 ### Pull from Docker Hub
 
 docker pull maksimmenshikh/devops-info-service
+
+## Running Tests
+
+cd app_python
+pip install -r requirements-dev.txt
+pytest -v
+
+![CI](https://github.com/MMenshikh/DevOps-Core-Course/actions/workflows/python-ci.yml/badge.svg)
