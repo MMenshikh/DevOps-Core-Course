@@ -44,12 +44,9 @@ jobs:
         password: ${{ secrets.DOCKERHUB_TOKEN }}
 
     - name: Snyk Scan
-      uses: snyk/actions/python@master
       env:
         SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-      working-directory: app_python
-      with:
-        command: test
+      run: snyk test --file=app_python/requirements.txt
         
     - name: Build and Push Docker Image
       uses: docker/build-push-action@v6
