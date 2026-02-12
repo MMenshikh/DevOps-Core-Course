@@ -29,7 +29,7 @@ jobs:
         pip install -r app_python/requirements-dev.txt
 
     - name: Lint
-      run: ruff app_python
+      run: ruff check app_python
 
     - name: Run tests
       run: pytest app_python/tests
@@ -50,8 +50,7 @@ jobs:
       with:
         command: test
 
-
-    - name: Build and Push
+    - name: Build and Push Docker Image
       uses: docker/build-push-action@v6
       with:
         context: ./app_python
