@@ -1,0 +1,40 @@
+import pytest
+from app import app
+
+
+@pytest.fixture
+def client():
+    app.config["TESTING"] = True
+    with app.test_client() as client:
+        yield client
+
+
+def test_index_ok(client):
+    response = client.get("/")
+    assert response.status_code == 200
+
+    data = response.get_json()
+
+    assert "service" in data
+    assert "system" in data
+    assert "runtime" in data
+    assert "request" in data
+    assert "endpoints" in data
+
+
+def test_health_ok(client):
+    response = client.get("/health")
+    assert response.status_code == 200
+
+    data = response.get_json()
+    assert data["status"] == "healthy"
+    assert "timestamp" in data
+    assert "uptime_seconds" in data
+
+
+def test_404(client):
+    response = client.get("/unknown")
+    assert response.status_code == 404
+
+    data = response.get_json()
+    assert data["error"] == "Not Found"
