@@ -1,0 +1,11 @@
+name: lab04
+description: lab04 devops
+runtime:
+  name: python
+  options:
+    toolchain: pip
+    virtualenv: venv
+config:
+  pulumi:tags:
+    value:
+      pulumi:template: python
