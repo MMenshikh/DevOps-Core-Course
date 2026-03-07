@@ -1,0 +1,35 @@
+- name: add docker gpg key
+  apt_key:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    state: present
+
+- name: add docker repo
+  apt_repository:
+    repo: "deb https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+    state: present
+
+- name: install docker packages
+  apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+    state: present
+    update_cache: yes
+
+- name: ensure docker running
+  service:
+    name: docker
+    state: started
+    enabled: yes
+
+- name: add user to docker group
+  user:
+    name: "{{ docker_user }}"
+    groups: docker
+    append: yes
+
+- name: install python docker module
+  apt:
+    name: python3-docker
+    state: present
