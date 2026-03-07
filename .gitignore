@@ -1,1 +1,10 @@
-test
+*.retry
+.vault_pass
+ansible/inventory/*.pyc
+__pycache__/
+.github
+terraform/authorized_key.json
+ansible/vault_pass.txt
+terraform/terraform.tfvars
+*.tfstate*
+**/.terraform/*
