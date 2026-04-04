@@ -1,0 +1,46 @@
+name: Ansible Deploy
+
+on:
+  push:
+
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install ansible and collections
+        run: |
+          pip install ansible ansible-lint
+          ansible-galaxy collection install community.docker
+
+      - name: Run lint
+        run: |
+          cd ansible
+          ansible-lint --offline || true
+
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.VM_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy
+        env:
+          ANSIBLE_VAULT_PASSWORD: ${{ secrets.ANSIBLE_VAULT_PASSWORD }}
+        run: |
+          cd ansible
+          # Создаем временный файл с паролем для Ansible
+          echo "$ANSIBLE_VAULT_PASSWORD" > .vault_pass
+          
+          ansible-playbook playbooks/deploy.yml \
+            --vault-password-file .vault_pass \
+            -i "${{ secrets.VM_HOST }}," \
+            -u "${{ secrets.VM_USER }}" \
+            -e "web_app_wipe=true"
+          
+          rm .vault_pass

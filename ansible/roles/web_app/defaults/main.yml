@@ -1,0 +1,2 @@
+restart_policy: unless-stopped
+web_app_wipe: false
