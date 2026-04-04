@@ -1,0 +1,4 @@
+- name: restart container
+  docker_container:
+    name: "{{ app_container_name }}"
+    state: restarted
