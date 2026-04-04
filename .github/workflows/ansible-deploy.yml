@@ -2,8 +2,7 @@ name: Ansible Deploy
 
 on:
   push:
-    paths:
-      - 'ansible/**'
+
 
 jobs:
   deploy:
