@@ -1,0 +1,17 @@
+- name: Wipe app
+  become: true
+  block:
+    - name: Stop containers
+      command: docker compose down
+      args:
+        chdir: "/opt/{{ app_name }}"
+      ignore_errors: true
+
+    - name: Remove directory
+      file:
+        path: "/opt/{{ app_name }}"
+        state: absent
+
+  when: web_app_wipe | default(false) | bool
+  tags:
+    - web_app_wipe

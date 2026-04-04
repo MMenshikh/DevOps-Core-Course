@@ -3,7 +3,46 @@
     update_cache: yes
     cache_valid_time: 3600
 
-- name: install common packages
-  apt:
-    name: "{{ common_packages }}"
-    state: present
+- name: Install packages
+  block:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install basic packages
+      apt:
+        name:
+          - curl
+          - git
+        state: present
+
+  rescue:
+    - name: Fix apt issues
+      command: apt-get update --fix-missing
+
+  always:
+    - name: Log completion
+      copy:
+        content: "Packages installed"
+        dest: /tmp/packages.log
+
+  become: true
+  tags:
+    - packages
+
+- name: Manage users
+  block:
+    - name: Create user
+      user:
+        name: devops
+        state: present
+
+  always:
+    - name: Log users
+      copy:
+        content: "Users configured"
+        dest: /tmp/users.log
+
+  become: true
+  tags:
+    - users
