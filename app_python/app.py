@@ -4,13 +4,15 @@ import platform
 import logging
 from datetime import datetime, timezone
 from flask import Flask, jsonify, request
+from pythonjsonlogger import jsonlogger
 
-# Logging configuration
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
 logger = logging.getLogger(__name__)
+logHandler = logging.StreamHandler()
+# Форматтер будет превращать записи в JSON
+formatter = jsonlogger.JsonFormatter('%(asctime)s %(name)s %(levelname)s %(message)s')
+logHandler.setFormatter(formatter)
+logger.addHandler(logHandler)
+logger.setLevel(logging.INFO)
 
 app = Flask(__name__)
 
@@ -22,7 +24,6 @@ DEBUG = os.getenv("DEBUG", "False").lower() == "true"
 # Application start time
 START_TIME = datetime.now(timezone.utc)
 
-
 def get_uptime():
     delta = datetime.now(timezone.utc) - START_TIME
     seconds = int(delta.total_seconds())
@@ -32,7 +33,6 @@ def get_uptime():
         "seconds": seconds,
         "human": f"{hours} hours, {minutes} minutes"
     }
-
 
 def get_system_info():
     return {
@@ -44,10 +44,14 @@ def get_system_info():
         "python_version": platform.python_version()
     }
 
-
 @app.route("/")
 def index():
-    logger.info(f"Request: {request.method} {request.path}")
+    # Используем extra для передачи полей в JSON
+    logger.info("request received", extra={
+        "method": request.method,
+        "path": request.path,
+        "client_ip": request.remote_addr
+    })
 
     uptime = get_uptime()
 
@@ -77,10 +81,10 @@ def index():
         ]
     })
 
-
 @app.route("/health")
 def health():
     uptime = get_uptime()
+    logger.info("health check", extra={"status": "healthy", "uptime": uptime["seconds"]})
     return jsonify({
         "status": "healthy",
         "timestamp": datetime.now(timezone.utc).isoformat(),
