@@ -2,27 +2,59 @@ import os
 import socket
 import platform
 import logging
+import time
 from datetime import datetime, timezone
 from flask import Flask, jsonify, request
 from pythonjsonlogger import jsonlogger
+from prometheus_client import Counter, Histogram, Gauge, generate_latest
 
+# ---------------- LOGGING ----------------
 logger = logging.getLogger(__name__)
 logHandler = logging.StreamHandler()
-# Форматтер будет превращать записи в JSON
 formatter = jsonlogger.JsonFormatter('%(asctime)s %(name)s %(levelname)s %(message)s')
 logHandler.setFormatter(formatter)
 logger.addHandler(logHandler)
 logger.setLevel(logging.INFO)
 
+# ---------------- APP ----------------
 app = Flask(__name__)
 
-# Configuration
 HOST = os.getenv("HOST", "0.0.0.0")
 PORT = int(os.getenv("PORT", 5000))
 DEBUG = os.getenv("DEBUG", "False").lower() == "true"
 
-# Application start time
 START_TIME = datetime.now(timezone.utc)
+
+# ---------------- METRICS ----------------
+
+# Counter — total requests
+http_requests_total = Counter(
+    'http_requests_total',
+    'Total HTTP requests',
+    ['method', 'endpoint', 'status']
+)
+
+# Histogram — request duration
+http_request_duration_seconds = Histogram(
+    'http_request_duration_seconds',
+    'HTTP request duration',
+    ['method', 'endpoint']
+)
+
+# Gauge — active requests
+http_requests_in_progress = Gauge(
+    'http_requests_in_progress',
+    'HTTP requests currently in progress'
+)
+
+# Custom metric — endpoint usage
+endpoint_calls = Counter(
+    'devops_info_endpoint_calls',
+    'Endpoint calls',
+    ['endpoint']
+)
+
+# ---------------- HELPERS ----------------
 
 def get_uptime():
     delta = datetime.now(timezone.utc) - START_TIME
@@ -44,14 +76,43 @@ def get_system_info():
         "python_version": platform.python_version()
     }
 
+# ---------------- MIDDLEWARE ----------------
+
+@app.before_request
+def before_request():
+    request.start_time = time.time()
+    http_requests_in_progress.inc()
+
+@app.after_request
+def after_request(response):
+    duration = time.time() - request.start_time
+
+    http_requests_total.labels(
+        method=request.method,
+        endpoint=request.path,
+        status=response.status_code
+    ).inc()
+
+    http_request_duration_seconds.labels(
+        method=request.method,
+        endpoint=request.path
+    ).observe(duration)
+
+    http_requests_in_progress.dec()
+
+    return response
+
+# ---------------- ROUTES ----------------
+
 @app.route("/")
 def index():
-    # Используем extra для передачи полей в JSON
     logger.info("request received", extra={
         "method": request.method,
         "path": request.path,
         "client_ip": request.remote_addr
     })
+
+    endpoint_calls.labels(endpoint="/").inc()
 
     uptime = get_uptime()
 
@@ -74,23 +135,33 @@ def index():
             "user_agent": request.headers.get("User-Agent"),
             "method": request.method,
             "path": request.path
-        },
-        "endpoints": [
-            {"path": "/", "method": "GET", "description": "Service information"},
-            {"path": "/health", "method": "GET", "description": "Health check"}
-        ]
+        }
     })
 
 @app.route("/health")
 def health():
     uptime = get_uptime()
-    logger.info("health check", extra={"status": "healthy", "uptime": uptime["seconds"]})
+
+    logger.info("health check", extra={
+        "status": "healthy",
+        "uptime": uptime["seconds"]
+    })
+
+    endpoint_calls.labels(endpoint="/health").inc()
+
     return jsonify({
         "status": "healthy",
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "uptime_seconds": uptime["seconds"]
     })
 
+# ---------------- METRICS ENDPOINT ----------------
+
+@app.route("/metrics")
+def metrics():
+    return generate_latest(), 200, {'Content-Type': 'text/plain'}
+
+# ---------------- ERRORS ----------------
 
 @app.errorhandler(404)
 def not_found(error):
@@ -99,7 +170,6 @@ def not_found(error):
         "message": "Endpoint does not exist"
     }), 404
 
-
 @app.errorhandler(500)
 def internal_error(error):
     return jsonify({
@@ -107,6 +177,7 @@ def internal_error(error):
         "message": "An unexpected error occurred"
     }), 500
 
+# ---------------- MAIN ----------------
 
 if __name__ == "__main__":
     logger.info("Starting DevOps Info Service...")
