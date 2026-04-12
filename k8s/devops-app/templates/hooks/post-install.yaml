@@ -1,0 +1,14 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: "{{ include "devops-app.fullname" . }}-postinstall"
+  annotations:
+    "helm.sh/hook": post-install
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: postinstall
+          image: busybox
+          command: ["sh", "-c", "echo Post-install && sleep 5"]

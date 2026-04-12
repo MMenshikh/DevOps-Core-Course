@@ -1,0 +1,12 @@
+replicaCount: 5
+
+image:
+  tag: "lab02"
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+service:
+  type: NodePort
