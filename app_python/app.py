@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from flask import Flask, jsonify, request
 from pythonjsonlogger import jsonlogger
 from prometheus_client import Counter, Histogram, Gauge, generate_latest
+from threading import Lock
 
 # ---------------- LOGGING ----------------
 logger = logging.getLogger(__name__)
@@ -25,29 +26,57 @@ DEBUG = os.getenv("DEBUG", "False").lower() == "true"
 
 START_TIME = datetime.now(timezone.utc)
 
+# ---------------- VISITS STORAGE ----------------
+
+DATA_DIR = "/data"
+VISITS_FILE = os.path.join(DATA_DIR, "visits")
+
+lock = Lock()
+
+def ensure_data_dir():
+    if not os.path.exists(DATA_DIR):
+        os.makedirs(DATA_DIR, exist_ok=True)
+
+def read_visits():
+    ensure_data_dir()
+    if not os.path.exists(VISITS_FILE):
+        return 0
+    try:
+        with open(VISITS_FILE, "r") as f:
+            return int(f.read().strip())
+    except:
+        return 0
+
+def write_visits(count):
+    with open(VISITS_FILE, "w") as f:
+        f.write(str(count))
+
+def increment_visits():
+    with lock:
+        count = read_visits()
+        count += 1
+        write_visits(count)
+        return count
+
 # ---------------- METRICS ----------------
 
-# Counter — total requests
 http_requests_total = Counter(
     'http_requests_total',
     'Total HTTP requests',
     ['method', 'endpoint', 'status']
 )
 
-# Histogram — request duration
 http_request_duration_seconds = Histogram(
     'http_request_duration_seconds',
     'HTTP request duration',
     ['method', 'endpoint']
 )
 
-# Gauge — active requests
 http_requests_in_progress = Gauge(
     'http_requests_in_progress',
     'HTTP requests currently in progress'
 )
 
-# Custom metric — endpoint usage
 endpoint_calls = Counter(
     'devops_info_endpoint_calls',
     'Endpoint calls',
@@ -114,15 +143,17 @@ def index():
 
     endpoint_calls.labels(endpoint="/").inc()
 
+    visits = increment_visits()
     uptime = get_uptime()
 
     return jsonify({
         "service": {
             "name": "devops-info-service",
-            "version": "1.0.0",
+            "version": "1.1.0",
             "description": "DevOps course info service",
             "framework": "Flask"
         },
+        "visits": visits,
         "system": get_system_info(),
         "runtime": {
             "uptime_seconds": uptime["seconds"],
@@ -136,6 +167,16 @@ def index():
             "method": request.method,
             "path": request.path
         }
+    })
+
+@app.route("/visits")
+def visits():
+    count = read_visits()
+
+    endpoint_calls.labels(endpoint="/visits").inc()
+
+    return jsonify({
+        "visits": count
     })
 
 @app.route("/health")
