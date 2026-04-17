@@ -36,3 +36,19 @@ spec:
           envFrom:
             - secretRef:
                 name: {{ include "devops-app.fullname" . }}-secret
+
+            - configMapRef:
+                name: {{ include "devops-app.fullname" . }}-env
+
+          volumeMounts:
+            - name: config-volume
+              mountPath: /config
+            - name: data-volume
+              mountPath: /data
+      volumes:
+        - name: config-volume
+          configMap:
+            name: {{ include "devops-app.fullname" . }}-config
+        - name: data-volume
+          persistentVolumeClaim:
+            claimName: {{ include "devops-app.fullname" . }}-data
