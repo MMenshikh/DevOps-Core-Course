@@ -13,6 +13,10 @@ spec:
     metadata:
       labels:
         app: {{ include "devops-app.name" . }}
+      annotations:
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: "devops-app-role"
+        vault.hashicorp.com/agent-inject-secret-config: "secret/data/devops-app/config"
     spec:
       containers:
         - name: app
@@ -28,3 +32,7 @@ spec:
 
           readinessProbe:
             {{- toYaml .Values.readinessProbe | nindent 12 }}
+
+          envFrom:
+            - secretRef:
+                name: {{ include "devops-app.fullname" . }}-secret
