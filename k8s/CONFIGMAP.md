@@ -175,6 +175,7 @@ Result: - Counter value remained unchanged → persistence works
 ![Get ConfigMap PVC](./docs/get-configmap-pvc.png)
 
 
+
 ------------------------------------------------------------------------
 
 ## 4. ConfigMap vs Secret
